@@ -11,7 +11,7 @@ phases:
   build:
     commands:
       - echo "Running tests..."
-      - python -m pytest tests/
+      - python -m pytest lambda/tests/
   post_build:
     commands:
       - echo "Preparing deployment package..."
