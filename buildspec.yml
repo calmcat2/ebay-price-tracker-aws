@@ -16,6 +16,7 @@ phases:
     commands:
       - echo "Preparing deployment package..."
       - zip -r deployment_package.zip .
+      - echo "Successfully prepared deployment package."
 
 
 artifacts:
