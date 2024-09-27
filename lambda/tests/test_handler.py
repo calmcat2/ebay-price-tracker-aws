@@ -3,6 +3,7 @@ import os
 
 # Add the src directory to the Python path to allow imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
+DB="price_tracker_v1"
 
 from handler import lambda_handler
 
