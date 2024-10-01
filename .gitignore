@@ -28,3 +28,6 @@
 
 # Ignore plan output files
 **/*tfplan*
+
+#Ignore lambda builds
+**/builds/*
