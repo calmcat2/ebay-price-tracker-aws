@@ -153,13 +153,13 @@ def price_crawl(url):
         logger.error(f"Error in price_crawl: {str(e)}")
         return None, None
 
-def validate_email(email):
-    pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
-    return re.match(pattern, email) is not None
+# def validate_email(email):
+#     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+#     return re.match(pattern, email) is not None
 
-def validate_url(url):
-    pattern = r'^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$'
-    return 'www.ebay.com' in url and re.match(pattern, url)
+# def validate_url(url):
+#     pattern = r'^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$'
+#     return 'www.ebay.com' in url and re.match(pattern, url)
 
 def create_response(status_code, body):
     return {
@@ -181,13 +181,13 @@ def lambda_handler(event, context):
         
         logger.info(f"Processing request for URL: {url} and email: {email}")
         
-        if not validate_email(email):
-            logger.error(f"Email {email} is invalid")
-            return create_response(400, {'error': 'email address is not valid.'})
+        # if not validate_email(email):
+        #     logger.error(f"Email {email} is invalid")
+        #     return create_response(400, {'error': 'email address is not valid.'})
         
-        if not validate_url(url):
-            logger.error(f"URL {url} is invalid")
-            return create_response(400, {'error': 'url is not valid.'})
+        # if not validate_url(url):
+        #     logger.error(f"URL {url} is invalid")
+        #     return create_response(400, {'error': 'url is not valid.'})
         
         query_dynamodb_sns(url, email)
         return create_response(200, {'message': 'Signed up successfully!'})
