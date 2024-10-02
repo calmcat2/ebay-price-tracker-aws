@@ -15,3 +15,11 @@ variable "allowed_origins"{
   default=["https://app1.maxinehe.top"]
 }
 
+variable "acm_arn"{
+  default="arn:aws:acm:us-east-1:637423641675:certificate/79739f16-4776-4998-bea0-7eb2dff7ceaf"
+}
+
+variable "my_domain" {
+  default="app1.maxinehe.top"
+  
+}

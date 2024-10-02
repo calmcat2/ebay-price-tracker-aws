@@ -231,7 +231,7 @@ module "acm_request_certificate" {
   source  = "terraform-aws-modules/acm/aws"
   version = "~> 4.0"
 
-  domain_name = "app1.maxinehe.top"
+  domain_name = "${var.my_domain}"
   wait_for_validation = true
   validation_timeout="30m"
   validation_method = "DNS"
@@ -266,7 +266,7 @@ module "cdn" {
       origin_access_control = "s3_oac"
     }
   }
-  aliases = ["app1.maxinehe.top"]
+  aliases = ["${var.my_domain}"]
   default_root_object ="index.html"
   
   default_cache_behavior = {
@@ -278,7 +278,10 @@ module "cdn" {
     compress        = true
     query_string    = true
     headers = ["Origin"]
+    use_forwarded_values = false
     response_headers_policy_id = aws_cloudfront_response_headers_policy.cors.id
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
   }
   viewer_certificate = {
     acm_certificate_arn = module.acm_request_certificate.acm_certificate_arn
@@ -287,6 +290,7 @@ module "cdn" {
   }
   depends_on = [module.acm_request_certificate.cert]
 }
+
 
 resource "aws_cloudfront_response_headers_policy" "cors" {
 name    = "cors-policy"

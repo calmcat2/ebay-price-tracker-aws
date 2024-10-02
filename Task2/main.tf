@@ -82,7 +82,7 @@ module "eventbridge" {
   rules = {
     crons = {
       description         = "Trigger for a Lambda"
-      schedule_expression = "rate(2 hours)"
+      schedule_expression = "rate(30 minutes)"
     }
   }
 

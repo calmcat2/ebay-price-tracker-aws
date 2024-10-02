@@ -8,5 +8,6 @@ variable "dynamodb_table_name" {
   default= "price_tracker_v1"
 }
 variable "lambda_layer_arn"{
-  default="arn:aws:lambda:us-east-1:637423641675:layer:price_tracker_v1_layer:7"
+    type=string
+  #default="arn:aws:lambda:us-east-1:637423641675:layer:price_tracker_v1_layer:8"
 }
