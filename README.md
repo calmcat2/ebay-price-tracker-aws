@@ -1,6 +1,8 @@
 # ebay-price-tracker-aws
 The `Task1` and `Task2` directories contain Terraform files for their respective tasks.
+
 The `tests` directory houses pytest files for the `Task1` Lambda function. 
+
 The `cleanup_script` directory contains a python script to remove SNS topics created by the application. Run this script before `terraform destroy` when removing the application.
 
 ## Task1 workflow:
