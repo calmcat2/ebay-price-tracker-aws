@@ -7,6 +7,11 @@ variable "dynamodb_table_name" {
   description = "The name of the DynamoDB table"
   default= "price_tracker_v1"
 }
+
+variable "dynamodb_table_arn" {
+  description = "ARN of the DynamoDB table"
+  type        = string
+}
 variable "lambda_layer_arn"{
     type=string
   #default="arn:aws:lambda:us-east-1:637423641675:layer:price_tracker_v1_layer:8"

@@ -32,9 +32,7 @@ module "lambda" {
   layers=[module.lambda_layer.lambda_layer_arn]
 
   timeout=30
-
-  #created for test purpose, will be removed before production phase.
-  create_lambda_function_url =true
+  publish = true
 
   environment_variables = {
     DB = var.dynamodb_table_name
@@ -47,38 +45,30 @@ module "lambda" {
       {
         Effect = "Allow"
         Action = [
-          "dynamodb:*",
-          "logs:CreateLogGroup", 
-          "logs:CreateLogStream", 
-          "logs:PutLogEvents",
-          "cloudwatch:DeleteAlarms",
-          "cloudwatch:DescribeAlarmHistory",
-          "cloudwatch:DescribeAlarms",
-          "cloudwatch:DescribeAlarmsForMetric",
-          "cloudwatch:GetMetricStatistics",
-          "cloudwatch:ListMetrics",
-          "cloudwatch:PutMetricAlarm",
-          "cloudwatch:GetMetricData",
-          "iam:GetRole",
-          "iam:ListRoles",
-          "kms:DescribeKey",
-          "kms:ListAliases",
-          "sns:CreateTopic",
-          "sns:DeleteTopic",
-          "sns:ListSubscriptions",
-          "sns:ListSubscriptionsByTopic",
-          "sns:ListTopics",
-          "sns:Subscribe",
-          "sns:Unsubscribe",
-          "sns:SetTopicAttributes",
-          "tag:GetResources"
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Scan"
+        ]
+        Resource = module.dynamodb.dynamodb_table_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
         ]
         Resource = "*"
       },
       {
         Effect = "Allow"
-        Action = "cloudwatch:GetInsightRuleReport"
-        Resource = "arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*"
+        Action = [
+          "sns:CreateTopic",
+          "sns:Subscribe",
+          "sns:Publish"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -113,10 +103,10 @@ module "api_gateway" {
     max_age       = 300
   }
 
-# Disable domain name creation
+  # Disable domain name creation
   create_domain_name = false
 
-  # Define the integration with your Lambda function
+  # Define the integration with the Lambda function
   routes = {
     "POST /" = {
       integration = {
@@ -125,12 +115,14 @@ module "api_gateway" {
         credentials_arn = "${aws_iam_role.api_gateway_role.arn}"
         payload_format_version = "2.0"
         timeout_milliseconds   = 12000
+        throttling_burst_limit = 100
+        throttling_rate_limit  = 200
       }
     }
   }  
 }
 
-# Grant necessary permissions
+# Create a api_gateway_role with the necessary trust policy
 resource "aws_iam_role" "api_gateway_role" {
   name = "price_tracker_v1_api_role"
 
@@ -148,6 +140,8 @@ resource "aws_iam_role" "api_gateway_role" {
   })
 
 }
+
+# Attach the necessary policy to the api_gateway_role
 resource "aws_iam_role_policy" "api_gateway_policy" {
   name = "price_tracker_v1_api_gateway_policy"
   role = aws_iam_role.api_gateway_role.id
@@ -168,7 +162,7 @@ resource "aws_iam_role_policy" "api_gateway_policy" {
   })
 }
 
-
+# Create a lambda permission to allow API Gateway to invoke the lambda function
 resource "aws_lambda_permission" "api_gw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
@@ -209,11 +203,15 @@ resource "aws_s3_object" "objects" {
   key    = each.value
   source = "s3_files/${each.value}"
   etag   = filemd5("s3_files/${each.value}")
-  content_type = lookup({
-    "html" = "text/html",
-    "css"  = "text/css",
-    "js"   = "application/javascript",
-  }, split(".", each.value)[length(split(".", each.value)) - 1], "application/octet-stream")
+  content_type = lookup(
+    {
+      "html" = "text/html",
+      "css"  = "text/css",
+      "js"   = "application/javascript"
+    },
+    split(".", each.value)[1],
+    "application/octet-stream"
+  )
 }
 
 #Need to modify the javascript file to use specified API url 
@@ -226,7 +224,7 @@ resource "aws_s3_object" "js_file" {
   content_type = "application/javascript"
 }
 
-#5. Create cloudfront
+#5. Create acm certificate and cloudfront 
 module "acm_request_certificate" {
   source  = "terraform-aws-modules/acm/aws"
   version = "~> 4.0"
@@ -251,6 +249,7 @@ module "cdn" {
   wait_for_deployment = false
 
   create_origin_access_control = true
+  # Create an OAC for the S3 bucket
   origin_access_control = {
     s3_oac = {
       description      = "OAC for price_tracker_v1 bucket"
@@ -280,8 +279,8 @@ module "cdn" {
     headers = ["Origin"]
     use_forwarded_values = false
     response_headers_policy_id = aws_cloudfront_response_headers_policy.cors.id
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
-    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+    cache_policy_id = data.aws_cloudfront_cache_policy.managed.id 
+    origin_request_policy_id = data.aws_cloudfront_origin_request_policy.manageds3.id 
   }
   viewer_certificate = {
     acm_certificate_arn = module.acm_request_certificate.acm_certificate_arn
@@ -291,57 +290,61 @@ module "cdn" {
   depends_on = [module.acm_request_certificate.cert]
 }
 
-
-resource "aws_cloudfront_response_headers_policy" "cors" {
-name    = "cors-policy"
-comment = "CORS policy"
-
-cors_config {
-    access_control_allow_credentials = false
-
-    access_control_allow_headers {
-    items = ["*"]
-    }
-
-    access_control_allow_methods {
-    items = ["GET", "POST", "OPTIONS"]
-    }
-
-    access_control_allow_origins {
-    items = var.allowed_origins
-    }
-
-    origin_override = false
-    }
+data "aws_cloudfront_cache_policy" "managed" {
+  name="Managed-CachingOptimized"
 }
 
+data "aws_cloudfront_origin_request_policy" "manageds3" {
+  name="Managed-CORS-S3Origin"
+}
 
-# Grant read permission to the CloudFront origin access control
+# Grant S3 bucket read permission to the CloudFront origin access control
 resource "aws_s3_bucket_policy" "bucket_policy_cloudfront_access" {
   bucket = module.s3_bucket.s3_bucket_id
 
   policy = <<EOF
-{
-    "Version": "2008-10-17",
-    "Id": "PolicyForCloudFrontPrivateContent",
-    "Statement": [
-        {
-            "Sid": "AllowCloudFrontServicePrincipal",
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "cloudfront.amazonaws.com"
-            },
-            "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::${module.s3_bucket.s3_bucket_id}/*",
-            "Condition": {
-                "StringEquals": {
-                    "AWS:SourceArn": "${module.cdn.cloudfront_distribution_arn}"
-                }
-            }
-        }
-    ]
-}
-EOF
+  {
+      "Version": "2008-10-17",
+      "Id": "PolicyForCloudFrontPrivateContent",
+      "Statement": [
+          {
+              "Sid": "AllowCloudFrontServicePrincipal",
+              "Effect": "Allow",
+              "Principal": {
+                  "Service": "cloudfront.amazonaws.com"
+              },
+              "Action": "s3:GetObject",
+              "Resource": "arn:aws:s3:::${module.s3_bucket.s3_bucket_id}/*",
+              "Condition": {
+                  "StringEquals": {
+                      "AWS:SourceArn": "${module.cdn.cloudfront_distribution_arn}"
+                  }
+              }
+          }
+      ]
+  }
+  EOF
 }
 
+resource "aws_cloudfront_response_headers_policy" "cors" {
+  name    = "cors-policy"
+  comment = "CORS policy for CloudFront"
 
+  cors_config {
+      access_control_allow_credentials = false
+
+      access_control_allow_headers {
+      items = ["*"]
+      }
+
+      access_control_allow_methods {
+      items = ["GET", "POST", "OPTIONS"]
+      }
+
+      access_control_allow_origins {
+      items = var.allowed_origins
+      }
+
+      origin_override = false
+      }
+  }

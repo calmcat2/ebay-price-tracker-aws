@@ -27,39 +27,26 @@ module "lambda" {
       {
         Effect = "Allow"
         Action = [
-          "dynamodb:*",
-          "logs:CreateLogGroup", 
-          "logs:CreateLogStream", 
-          "logs:PutLogEvents",
-          "cloudwatch:DeleteAlarms",
-          "cloudwatch:DescribeAlarmHistory",
-          "cloudwatch:DescribeAlarms",
-          "cloudwatch:DescribeAlarmsForMetric",
-          "cloudwatch:GetMetricStatistics",
-          "cloudwatch:ListMetrics",
-          "cloudwatch:PutMetricAlarm",
-          "cloudwatch:GetMetricData",
-          "iam:GetRole",
-          "iam:ListRoles",
-          "kms:DescribeKey",
-          "kms:ListAliases",
-          "sns:CreateTopic",
-          "sns:DeleteTopic",
-          "sns:ListSubscriptions",
-          "sns:ListSubscriptionsByTopic",
-          "sns:ListTopics",
-          "sns:Subscribe",
-          "sns:Unsubscribe",
-          "sns:SetTopicAttributes",
-          "sns:Publish",
-          "tag:GetResources"
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = var.dynamodb_table_arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
         ]
         Resource = "*"
       },
       {
         Effect = "Allow"
-        Action = "cloudwatch:GetInsightRuleReport"
-        Resource = "arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*"
+        Action = [
+          "sns:Publish"
+        ]
+        Resource = "*"
       }
     ]
   })
